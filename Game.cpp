@@ -33,6 +33,8 @@ void Player::Controls::send_controls_message(Connection *connection_) const {
 	send_button(jump);
 }
 
+
+
 void Player::Controls::send_clicks_message(Connection *connection_) const {
 	// std::cout << "scm" << std::endl;
 	assert(connection_);
@@ -115,13 +117,13 @@ bool Player::Controls::recv_clicks_message(Connection *connection_) {
 
 	//expecting [type, size_low0, size_mid8, size_high8]:
 	if (recv_buffer.size() < 4) {
-		std::cout << "recv_buffer.size() = " << recv_buffer.size() << " < 4 " << std::endl;
+		// std::cout << "recv_buffer.size() = " << recv_buffer.size() << " < 4 " << std::endl;
 		return false;
 	}
 	if (recv_buffer[0] != uint8_t(Message::C2S_Clicks)){
-		std::cout << " recv_buffer[0] != uint8_t(Message::C2S_Clicks " << std::endl;
-		std::cout << unsigned(recv_buffer[0]) << std::endl;
-		std::cout << unsigned(Message::C2S_Clicks) << std::endl;
+		// std::cout << " recv_buffer[0] != uint8_t(Message::C2S_Clicks " << std::endl;
+		// std::cout << unsigned(recv_buffer[0]) << std::endl;
+		// std::cout << unsigned(Message::C2S_Clicks) << std::endl;
 		return false;
 	} 
 	uint32_t size = (uint32_t(recv_buffer[3]) << 16)
@@ -131,24 +133,27 @@ bool Player::Controls::recv_clicks_message(Connection *connection_) {
 	
 	//expecting complete message:
 	if (recv_buffer.size() < 4 + size){
-		std::cout << "recv_buffer.size(): " << recv_buffer.size() << std::endl;
-		std::cout << "  4 + size " <<  4 + size << std::endl;
-		std::cout << "incomplete message" << std::endl;
+		// std::cout << "recv_buffer.size(): " << recv_buffer.size() << std::endl;
+		// std::cout << "  4 + size " <<  4 + size << std::endl;
+		// std::cout << "incomplete message" << std::endl;
 		return false;
 	}
 
 
-	std::cout << "rcm !" << std::endl;
+	// std::cout << "rcm !" << std::endl;
 	auto recv_button = [](uint8_t byte, ClickGrid *button) {
-		button->pressed = (byte & 0x80);
-		uint32_t d = uint32_t(button->grid_spot) + uint32_t(byte & 0x7f);
+		// button->pressed = (byte & 0x80);
+		// std::cout << "button->grid_spot: " << unsigned(button->grid_spot) << std::endl;
+		byte = button->grid_spot;
+		// std::cout << "button->grid_spot: " << unsigned(button->grid_spot) << std::endl;
+		// uint32_t d = uint32_t(button->grid_spot) + uint32_t(byte & 0x7f);
 		// if (d > 255) {
 		// 	std::cerr << "got a whole lot of downs" << std::endl;
 		// 	d = 255;
 		// }
 		
-		button->grid_spot = uint8_t(d);
-		std::cout << "button->grid_spot: " << unsigned(button->grid_spot) << std::endl;
+		// button->grid_spot = uint8_t(d);
+		// std::cout << "button->grid_spot: " << unsigned(button->grid_spot) << std::endl;
 		// myclicked = uint8_t(d);
 	};
 
@@ -160,7 +165,7 @@ bool Player::Controls::recv_clicks_message(Connection *connection_) {
 
 	//delete message from buffer:
 	recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + 4 + size);
-	std::cout << "clicsks " << std::endl;
+	// std::cout << "clicsks " << std::endl;
 
 	return true;
 }
@@ -186,7 +191,7 @@ Player *Game::spawn_player() {
 	// } while (player.color == glm::vec3(0.0f));
 	// player.color = glm::normalize(player.color);
 
-	player.color == glm::vec3(0.0f);
+	player.color = glm::vec3(0.0f);
 	player.name = "Player " + std::to_string(next_player_number++);
 
 	return &player;
@@ -206,12 +211,17 @@ void Game::remove_player(Player *player) {
 
 void Game::update(float elapsed) {
 	//position/velocity update:
+
+	
+
+
+
 	for (auto &p : players) {
 		glm::vec2 dir = glm::vec2(0.0f, 0.0f);
-		if (p.controls.left.pressed) dir.x -= 1.0f;
-		if (p.controls.right.pressed) dir.x += 1.0f;
-		if (p.controls.down.pressed) dir.y -= 1.0f;
-		if (p.controls.up.pressed) dir.y += 1.0f;
+		// if (p.controls.left.pressed) dir.x -= 1.0f;
+		// if (p.controls.right.pressed) dir.x += 1.0f;
+		// if (p.controls.down.pressed) dir.y -= 1.0f;
+		// if (p.controls.up.pressed) dir.y += 1.0f;
 
 		// if (p.controls.up.pressed) dir.y += 1.0f;
 		// std::cout << "p.controls.clickgrid.grid_spot: " << p.controls.clickgrid.grid_spot << std::endl;
@@ -238,7 +248,7 @@ void Game::update(float elapsed) {
 
 			p.velocity = dir * along + glm::vec2(-dir.y, dir.x) * perp;
 		}
-		p.position += p.velocity * elapsed;
+		// p.position += p.velocity * elapsed;
 
 		//reset 'downs' since controls have been handled:
 		p.controls.left.downs = 0;
@@ -249,39 +259,39 @@ void Game::update(float elapsed) {
 	}
 
 	//collision resolution:
-	for (auto &p1 : players) {
-		//player/player collisions:
-		for (auto &p2 : players) {
-			if (&p1 == &p2) break;
-			glm::vec2 p12 = p2.position - p1.position;
-			float len2 = glm::length2(p12);
-			if (len2 > (2.0f * PlayerRadius) * (2.0f * PlayerRadius)) continue;
-			if (len2 == 0.0f) continue;
-			glm::vec2 dir = p12 / std::sqrt(len2);
-			//mirror velocity to be in separating direction:
-			glm::vec2 v12 = p2.velocity - p1.velocity;
-			glm::vec2 delta_v12 = dir * glm::max(0.0f, -1.75f * glm::dot(dir, v12));
-			p2.velocity += 0.5f * delta_v12;
-			p1.velocity -= 0.5f * delta_v12;
-		}
-		//player/arena collisions:
-		if (p1.position.x < ArenaMin.x + PlayerRadius) {
-			p1.position.x = ArenaMin.x + PlayerRadius;
-			p1.velocity.x = std::abs(p1.velocity.x);
-		}
-		if (p1.position.x > ArenaMax.x - PlayerRadius) {
-			p1.position.x = ArenaMax.x - PlayerRadius;
-			p1.velocity.x =-std::abs(p1.velocity.x);
-		}
-		if (p1.position.y < ArenaMin.y + PlayerRadius) {
-			p1.position.y = ArenaMin.y + PlayerRadius;
-			p1.velocity.y = std::abs(p1.velocity.y);
-		}
-		if (p1.position.y > ArenaMax.y - PlayerRadius) {
-			p1.position.y = ArenaMax.y - PlayerRadius;
-			p1.velocity.y =-std::abs(p1.velocity.y);
-		}
-	}
+	// for (auto &p1 : players) {
+	// 	//player/player collisions:
+	// 	for (auto &p2 : players) {
+	// 		if (&p1 == &p2) break;
+	// 		glm::vec2 p12 = p2.position - p1.position;
+	// 		float len2 = glm::length2(p12);
+	// 		// if (len2 > (2.0f * PlayerRadius) * (2.0f * PlayerRadius)) continue;
+	// 		// if (len2 == 0.0f) continue;
+	// 		// glm::vec2 dir = p12 / std::sqrt(len2);
+	// 		//mirror velocity to be in separating direction:
+	// 		// glm::vec2 v12 = p2.velocity - p1.velocity;
+	// 		// glm::vec2 delta_v12 = dir * glm::max(0.0f, -1.75f * glm::dot(dir, v12));
+	// 		// p2.velocity += 0.5f * delta_v12;
+	// 		// p1.velocity -= 0.5f * delta_v12;
+	// 	}
+	// 	//player/arena collisions:
+	// 	if (p1.position.x < ArenaMin.x + PlayerRadius) {
+	// 		p1.position.x = ArenaMin.x + PlayerRadius;
+	// 		p1.velocity.x = std::abs(p1.velocity.x);
+	// 	}
+	// 	if (p1.position.x > ArenaMax.x - PlayerRadius) {
+	// 		p1.position.x = ArenaMax.x - PlayerRadius;
+	// 		p1.velocity.x =-std::abs(p1.velocity.x);
+	// 	}
+	// 	if (p1.position.y < ArenaMin.y + PlayerRadius) {
+	// 		p1.position.y = ArenaMin.y + PlayerRadius;
+	// 		p1.velocity.y = std::abs(p1.velocity.y);
+	// 	}
+	// 	if (p1.position.y > ArenaMax.y - PlayerRadius) {
+	// 		p1.position.y = ArenaMax.y - PlayerRadius;
+	// 		p1.velocity.y =-std::abs(p1.velocity.y);
+	// 	}
+	// }
 
 }
 
@@ -291,7 +301,7 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 	auto &connection = *connection_;
 
 
-	std::cout << "ssm: myclicked- = " << unsigned(connection_player->controls.clickgrid.grid_spot) << std::endl;
+	// std::cout << "ssm: myclicked- = " << unsigned(connection_player->controls.clickgrid.grid_spot) << std::endl;
 	connection.send(Message::S2C_State);
 	//will patch message size in later, for now placeholder bytes:
 	connection.send(uint8_t(0));
@@ -303,16 +313,16 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 	//send player info helper:
 	auto send_player = [&](Player const &player) {
 		// player.position.x = 
-		std::cout << "connection_player->controls.clickgrid.grid_spot:: " << float(connection_player->controls.clickgrid.grid_spot) << std::endl;
-		// const glm::uvec2 barb = glm::uvec2(player.position.x, float(connection_player->controls.clickgrid.grid_spot));
-		// connection.send(barb);
-		connection.send(player.position);
+		// std::cout << "connection_player->controls.clickgrid.grid_spot:: " << float(connection_player->controls.clickgrid.grid_spot) << std::endl;
+		const glm::vec2 barb2 = glm::vec2(float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot));
+		connection.send(barb2);
+		// connection.send(player.position);
 		// std::cout << "barb.y " << barb.y  << std::endl;
 		// connection.send(connection_player->controls.clickgrid.grid_spot);
 		connection.send(player.velocity);
-		const glm::uvec3 barb = glm::uvec3(float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot));
+		const glm::vec3 barb = glm::vec3(float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot));
 		
-		std::cout << "barb : " << barb.x << " " << barb.y << " " << barb.z << std::endl;
+		// std::cout << "barb : " << barb.x << " " << barb.y << " " << barb.z << std::endl;
 		
 		connection.send(barb);
 	
@@ -372,10 +382,10 @@ bool Game::recv_state_message(Connection *connection_) {
 		// std::cout << "player.position: " << player.position.x << "  " << player.position.y << std::endl;
 		read(&player.velocity);
 		read(&player.color);
-		std::cout << "player.color: " << player.color.x << "  " << player.position.y << " " << player.color.z << std::endl;
+		// std::cout << "player.color: " << player.color.x << "  " << player.position.y << " " << player.color.z << std::endl;
 		uint8_t name_len;
 		read(&name_len);
-		std::cout << "player.position.y " << player.position.y  << std::endl;
+		// std::cout << "player.position.y " << player.position.y  << std::endl;
 		//n.b. would probably be more efficient to directly copy from recv_buffer, but I think this is clearer:
 		player.name = "";
 		for (uint8_t n = 0; n < name_len; ++n) {

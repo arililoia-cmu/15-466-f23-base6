@@ -17,6 +17,10 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+
+	int grid_status[9] = {};
+	int player_id = 1;
+	int winner_id = 0;
 	//----- game state -----
 
 	//input tracking for local player:

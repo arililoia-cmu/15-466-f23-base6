@@ -52,6 +52,7 @@ struct Player {
 		//returns 'true' if read a controls message,
 		//throws on malformed controls message
 		bool recv_clicks_message(Connection *connection);
+		
 
 		// bool recv_click_message(Connection *connection);
 	} controls;
@@ -59,6 +60,7 @@ struct Player {
 	//player state (sent from server):
 	glm::vec2 position = glm::vec2(0.0f, 0.0f);
 	glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
+	// int player_id = 0;
 
 	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
 	std::string name = "";
