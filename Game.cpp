@@ -11,6 +11,7 @@
 void Player::Controls::send_controls_message(Connection *connection_) const {
 	assert(connection_);
 	auto &connection = *connection_;
+	// std::cout << "scm" << std::endl;
 
 	uint32_t size = 5;
 	connection.send(Message::C2S_Controls);
@@ -32,9 +33,43 @@ void Player::Controls::send_controls_message(Connection *connection_) const {
 	send_button(jump);
 }
 
+void Player::Controls::send_clicks_message(Connection *connection_) const {
+	// std::cout << "scm" << std::endl;
+	assert(connection_);
+	auto &connection = *connection_;
+
+	uint32_t size = 5;
+	connection.send(Message::C2S_Clicks);
+	connection.send(uint8_t(size));
+	connection.send(uint8_t(size >> 8));
+	connection.send(uint8_t(size >> 16));
+
+	auto send_click = [&](ClickGrid const &b) {
+		if (b.grid_spot & 0x80) {
+			std::cerr << "Wow, you are really good at pressing buttons!" << std::endl;
+		}
+		connection.send(uint8_t( (b.pressed ? 0x80 : 0x00) | (b.grid_spot & 0x7f) ) );
+	};
+
+	// send_button(left);
+	// send_button(right);
+	// send_button(up);
+	// send_button(down);
+	// std::cout << "scm!" << std::endl;
+	// send_button(jump);
+	send_click(clickgrid);
+	send_click(clickgrid);
+	send_click(clickgrid);
+	send_click(clickgrid);
+	send_click(clickgrid);
+}
+
+
+
 bool Player::Controls::recv_controls_message(Connection *connection_) {
 	assert(connection_);
 	auto &connection = *connection_;
+	
 
 	auto &recv_buffer = connection.recv_buffer;
 
@@ -67,6 +102,65 @@ bool Player::Controls::recv_controls_message(Connection *connection_) {
 
 	//delete message from buffer:
 	recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + 4 + size);
+
+	return true;
+}
+
+bool Player::Controls::recv_clicks_message(Connection *connection_) {
+	
+	assert(connection_);
+	auto &connection = *connection_;
+	// std::cout << "rcm" << std::endl;
+	auto &recv_buffer = connection.recv_buffer;
+
+	//expecting [type, size_low0, size_mid8, size_high8]:
+	if (recv_buffer.size() < 4) {
+		std::cout << "recv_buffer.size() = " << recv_buffer.size() << " < 4 " << std::endl;
+		return false;
+	}
+	if (recv_buffer[0] != uint8_t(Message::C2S_Clicks)){
+		std::cout << " recv_buffer[0] != uint8_t(Message::C2S_Clicks " << std::endl;
+		std::cout << unsigned(recv_buffer[0]) << std::endl;
+		std::cout << unsigned(Message::C2S_Clicks) << std::endl;
+		return false;
+	} 
+	uint32_t size = (uint32_t(recv_buffer[3]) << 16)
+	              | (uint32_t(recv_buffer[2]) << 8)
+	              |  uint32_t(recv_buffer[1]);
+	if (size != 5) throw std::runtime_error("Controls message with size " + std::to_string(size) + " != 5!");
+	
+	//expecting complete message:
+	if (recv_buffer.size() < 4 + size){
+		std::cout << "recv_buffer.size(): " << recv_buffer.size() << std::endl;
+		std::cout << "  4 + size " <<  4 + size << std::endl;
+		std::cout << "incomplete message" << std::endl;
+		return false;
+	}
+
+
+	std::cout << "rcm !" << std::endl;
+	auto recv_button = [](uint8_t byte, ClickGrid *button) {
+		button->pressed = (byte & 0x80);
+		uint32_t d = uint32_t(button->grid_spot) + uint32_t(byte & 0x7f);
+		// if (d > 255) {
+		// 	std::cerr << "got a whole lot of downs" << std::endl;
+		// 	d = 255;
+		// }
+		
+		button->grid_spot = uint8_t(d);
+		std::cout << "button->grid_spot: " << unsigned(button->grid_spot) << std::endl;
+		// myclicked = uint8_t(d);
+	};
+
+	recv_button(recv_buffer[4+0], &clickgrid);
+	recv_button(recv_buffer[4+1], &clickgrid);
+	recv_button(recv_buffer[4+2], &clickgrid);
+	recv_button(recv_buffer[4+3], &clickgrid);
+	recv_button(recv_buffer[4+4], &clickgrid);
+
+	//delete message from buffer:
+	recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + 4 + size);
+	std::cout << "clicsks " << std::endl;
 
 	return true;
 }
@@ -118,6 +212,9 @@ void Game::update(float elapsed) {
 		if (p.controls.down.pressed) dir.y -= 1.0f;
 		if (p.controls.up.pressed) dir.y += 1.0f;
 
+		// if (p.controls.up.pressed) dir.y += 1.0f;
+		// std::cout << "p.controls.clickgrid.grid_spot: " << p.controls.clickgrid.grid_spot << std::endl;
+		
 		if (dir == glm::vec2(0.0f)) {
 			//no inputs: just drift to a stop
 			float amt = 1.0f - std::pow(0.5f, elapsed / (PlayerAccelHalflife * 2.0f));
@@ -192,6 +289,8 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 	assert(connection_);
 	auto &connection = *connection_;
 
+
+	std::cout << "ssm: myclicked- = " << unsigned(connection_player->controls.clickgrid.grid_spot) << std::endl;
 	connection.send(Message::S2C_State);
 	//will patch message size in later, for now placeholder bytes:
 	connection.send(uint8_t(0));

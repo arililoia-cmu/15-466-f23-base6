@@ -24,12 +24,19 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		if (evt.key.repeat) {
 			//ignore repeats
 		} else if (evt.key.keysym.sym == SDLK_a) {
+			std::cout << "a down " << std::endl;
 			controls.left.downs += 1;
 			controls.left.pressed = true;
+
+			controls.clickgrid.grid_spot = 1;
+			controls.clickgrid.pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_d) {
 			controls.right.downs += 1;
 			controls.right.pressed = true;
+
+			controls.clickgrid.grid_spot = 2;
+			controls.clickgrid.pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_w) {
 			controls.up.downs += 1;
@@ -46,10 +53,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
+			std::cout << "a up " << std::endl;
 			controls.left.pressed = false;
+			controls.clickgrid.pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_d) {
 			controls.right.pressed = false;
+			controls.clickgrid.pressed = false;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_w) {
 			controls.up.pressed = false;
@@ -70,9 +80,12 @@ void PlayMode::update(float elapsed) {
 
 	//queue data for sending to server:
 	controls.send_controls_message(&client.connection);
+	
+	controls.send_clicks_message(&client.connection);
 
 	//reset button press counters:
 	controls.left.downs = 0;
+	// controls.clickgrid.presse
 	controls.right.downs = 0;
 	controls.up.downs = 0;
 	controls.down.downs = 0;
@@ -104,14 +117,14 @@ void PlayMode::update(float elapsed) {
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
-	// static std::array< glm::vec2, 16 > const circle = [](){
-	// 	std::array< glm::vec2, 16 > ret;
-	// 	for (uint32_t a = 0; a < ret.size(); ++a) {
-	// 		float ang = a / float(ret.size()) * 2.0f * float(M_PI);
-	// 		ret[a] = glm::vec2(std::cos(ang), std::sin(ang));
-	// 	}
-	// 	return ret;
-	// }();
+	static std::array< glm::vec2, 16 > const circle = [](){
+		std::array< glm::vec2, 16 > ret;
+		for (uint32_t a = 0; a < ret.size(); ++a) {
+			float ang = a / float(ret.size()) * 2.0f * float(M_PI);
+			ret[a] = glm::vec2(std::cos(ang), std::sin(ang));
+		}
+		return ret;
+	}();
 
 	// glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 	// glClear(GL_COLOR_BUFFER_BIT);
@@ -148,21 +161,31 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		DrawLines lines(world_to_clip);
 
 		//helper:
-		// auto draw_text = [&](glm::vec2 const &at, std::string const &text, float H) {
-		// 	lines.draw_text(text,
-		// 		glm::vec3(at.x, at.y, 0.0),
-		// 		glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-		// 		glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		// 	float ofs = (1.0f / scale) / drawable_size.y;
-		// 	lines.draw_text(text,
-		// 		glm::vec3(at.x + ofs, at.y + ofs, 0.0),
-		// 		glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-		// 		glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-		// };
+		auto draw_text = [&](glm::vec2 const &at, std::string const &text, float H) {
+			lines.draw_text(text,
+				glm::vec3(at.x, at.y, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+			float ofs = (1.0f) / drawable_size.y;
+			lines.draw_text(text,
+				glm::vec3(at.x + ofs, at.y + ofs, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+		};
 		auto to_ld = [](int coord_x, int coord_y){
+
+			// float ws_x_real = ((ws_x+1.0f)/2.0f)*1280;
+			// float ws_y_real = 720 - (((ws_y+1.0f)/2.0f)*720);
+			// float coord_x_new = ((coord_x/1280.0f)*2.0f)-1.0f;
+			// float coord_y_new = 
+
+			float coord_x_new = ((float(coord_x)/1280.0f)*2.0)-1.0f;
+			float coord_y_new = ((float(coord_y)/720.0f)*2.0)-1.0f;
+			// std::cout << "coord_x_new: " << coord_x_new << std::endl;
+			// std::cout << "coord_y_new: " << coord_y_new << std::endl;
 			return glm::vec3(
-				((coord_x/1280.0f)*2.0)-1.0f, 
-				((coord_y/720.0f)*2.0)-1.0f, 
+				coord_x_new,
+				coord_y_new,
 				0.0f
 			);
 		};
@@ -174,10 +197,10 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// float tr_x = 0.5;
 		// float tr_y = 0.2;
 
-		float bl_x = 540;
-		float bl_y = 25;
-		float tr_x = 740;
-		float tr_y = 200;
+		float bl_x = 0;
+		float bl_y = 0;
+		float tr_x = 1280;
+		float tr_y = 720;
 		// // n_sq = num squares per dim
 		int n_sq = 3;
 
@@ -193,8 +216,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// lines.draw(glm::vec3(tr_x, tr_y, 0.0f), glm::vec3(tr_x, bl_y, 0.0f), grid_color);
 		// lines.draw(glm::vec3(tr_x, bl_y, 0.0f), glm::vec3(bl_x, bl_y, 0.0f), grid_color);
 		
-		// lines.draw(glm::vec3(-0.9f, 0.9f, 0.0f), glm::vec3(0.9f, 0.9f, 0.0f), grid_color);
-		// lines.draw(glm::vec3(0.9f, 0.9f, 0.0f), glm::vec3(0.9f, 0.9f, 0.0f), grid_color);
+		// lines.draw(glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.5f, 0.5f, 0.0f), grid_color);
+		// lines.draw(glm::vec3(0.9f, 0.9f, 0.0f), glm::vec3(-0.9f, 0.9f, 0.0f), grid_color);
+		// lines.draw(glm::vec3(-0.9f, 0.9f, 0.0f), glm::vec3(-0.9f, -0.9f, 0.0f), grid_color);
 		
 		for (int i=0; i<n_sq+1; i++){
 			lines.draw( 
@@ -223,8 +247,30 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		int mouse_x, mouse_y;
 		SDL_GetMouseState(&mouse_x, &mouse_y);
+		// float coord_x_new = ((float(mouse_x)/1280.0f)*2.0)-1.0f;
+		// float coord_y_new = ((float(mouse_y)/720.0f)*2.0)-1.0f;
+		// std::cout << "coord_x_new: " << mouse_x << std::endl;
+		// std::cout << "coord_y_new: " << mouse_y << std::endl;
+
+
+
 		// std::cout << "(" << mouse_x << ", " << mouse_y << ")" << std::endl;
 		
+		float cell_width = (1000 - 280) / 3.0f;
+		float cell_height = (720 - 0) / 3.0f;
+
+		int col = int((mouse_x - 280) / cell_width);
+		int row = int((720 - mouse_y) / cell_height);
+
+		if ((0 <= col) && (col < 3) && (0 <= row) && (row < 3)){
+		// if ((0 <= col < 3) && (0 <= row < 3)){
+			// std::cout << "grid square " << (row * 3) + (col + 1) << std::endl;
+		}else{
+			// std::cout << "outside" << std::endl;
+		}
+			
+			
+
 		// glm::vec3 bb  = convert_to_linesdraw(glm::vec2(5,3));
 		// std::cout << bb.x << std::endl;
 		// for (int i=0; i<num_squares_per_dim; i++){
@@ -236,31 +282,31 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// lines.draw(glm::vec3(Game::ArenaMin.x, Game::ArenaMin.y, 0.0f), glm::vec3(Game::ArenaMin.x, Game::ArenaMax.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
 		// lines.draw(glm::vec3(Game::ArenaMax.x, Game::ArenaMin.y, 0.0f), glm::vec3(Game::ArenaMax.x, Game::ArenaMax.y, 0.0f), glm::u8vec4(0xff, 0x00, 0xff, 0xff));
 
-		// for (auto const &player : game.players) {
-		// 	glm::u8vec4 col = glm::u8vec4(player.color.x*255, player.color.y*255, player.color.z*255, 0xff);
-		// 	if (&player == &game.players.front()) {
-		// 		//mark current player (which server sends first):
-		// 		lines.draw(
-		// 			glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f,-0.5f), 0.0f),
-		// 			glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f, 0.5f), 0.0f),
-		// 			col
-		// 		);
-		// 		lines.draw(
-		// 			glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f, 0.5f), 0.0f),
-		// 			glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f,-0.5f), 0.0f),
-		// 			col
-		// 		);
-		// 	}
-		// 	for (uint32_t a = 0; a < circle.size(); ++a) {
-		// 		lines.draw(
-		// 			glm::vec3(player.position + Game::PlayerRadius * circle[a], 0.0f),
-		// 			glm::vec3(player.position + Game::PlayerRadius * circle[(a+1)%circle.size()], 0.0f),
-		// 			col
-		// 		);
-		// 	}
+		for (auto const &player : game.players) {
+			glm::u8vec4 col = glm::u8vec4(player.color.x*255, player.color.y*255, player.color.z*255, 0xff);
+			if (&player == &game.players.front()) {
+				//mark current player (which server sends first):
+				lines.draw(
+					glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f,-0.5f), 0.0f),
+					glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f, 0.5f), 0.0f),
+					col
+				);
+				lines.draw(
+					glm::vec3(player.position + Game::PlayerRadius * glm::vec2(-0.5f, 0.5f), 0.0f),
+					glm::vec3(player.position + Game::PlayerRadius * glm::vec2( 0.5f,-0.5f), 0.0f),
+					col
+				);
+			}
+			for (uint32_t a = 0; a < circle.size(); ++a) {
+				lines.draw(
+					glm::vec3(player.position + Game::PlayerRadius * circle[a], 0.0f),
+					glm::vec3(player.position + Game::PlayerRadius * circle[(a+1)%circle.size()], 0.0f),
+					col
+				);
+			}
 
-			// draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
-		// }
+			draw_text(player.position + glm::vec2(0.0f, -0.1f + Game::PlayerRadius), player.name, 0.09f);
+		}
 	}
 	GL_ERRORS();
 }

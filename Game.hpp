@@ -14,6 +14,7 @@ struct Connection;
 
 enum class Message : uint8_t {
 	C2S_Controls = 1, //Greg!
+	C2S_Clicks = 2,
 	S2C_State = 's',
 	//...
 };
@@ -24,11 +25,18 @@ struct Button {
 	bool pressed = false; //is the button pressed now
 };
 
+struct ClickGrid {
+	uint8_t grid_spot = 0; //times the button has been pressed
+	bool pressed = false; //is the button pressed now
+};
+
 //state of one player in the game:
 struct Player {
 	//player inputs (sent from client):
 	struct Controls {
 		Button left, right, up, down, jump;
+
+		ClickGrid clickgrid;
 
 		void send_controls_message(Connection *connection) const;
 
@@ -36,6 +44,16 @@ struct Player {
 		//returns 'true' if read a controls message,
 		//throws on malformed controls message
 		bool recv_controls_message(Connection *connection);
+
+
+		void send_clicks_message(Connection *connection) const;
+
+		//returns 'false' if no message or not a controls message,
+		//returns 'true' if read a controls message,
+		//throws on malformed controls message
+		bool recv_clicks_message(Connection *connection);
+
+		// bool recv_click_message(Connection *connection);
 	} controls;
 
 	//player state (sent from server):
@@ -64,14 +82,16 @@ struct Game {
 	inline static constexpr float Tick = 1.0f / 30.0f;
 
 	//arena size:
-	inline static constexpr glm::vec2 ArenaMin = glm::vec2(-0.75f, -1.0f);
-	inline static constexpr glm::vec2 ArenaMax = glm::vec2( 0.75f,  1.0f);
+	inline static constexpr glm::vec2 ArenaMin = glm::vec2(-1.0f, -1.0f);
+	inline static constexpr glm::vec2 ArenaMax = glm::vec2( 1.0f,  1.0f);
 
 	//player constants:
 	inline static constexpr float PlayerRadius = 0.06f;
 	inline static constexpr float PlayerSpeed = 2.0f;
 	inline static constexpr float PlayerAccelHalflife = 0.25f;
 	
+
+	uint8_t myclicked = 0;
 
 	//---- communication helpers ----
 
