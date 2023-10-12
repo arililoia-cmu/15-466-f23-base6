@@ -179,13 +179,14 @@ Player *Game::spawn_player() {
 	player.position.x = glm::mix(ArenaMin.x + 2.0f * PlayerRadius, ArenaMax.x - 2.0f * PlayerRadius, 0.4f + 0.2f * mt() / float(mt.max()));
 	player.position.y = glm::mix(ArenaMin.y + 2.0f * PlayerRadius, ArenaMax.y - 2.0f * PlayerRadius, 0.4f + 0.2f * mt() / float(mt.max()));
 
-	do {
-		player.color.r = mt() / float(mt.max());
-		player.color.g = mt() / float(mt.max());
-		player.color.b = mt() / float(mt.max());
-	} while (player.color == glm::vec3(0.0f));
-	player.color = glm::normalize(player.color);
+	// do {
+	// 	player.color.r = mt() / float(mt.max());
+	// 	player.color.g = mt() / float(mt.max());
+	// 	player.color.b = mt() / float(mt.max());
+	// } while (player.color == glm::vec3(0.0f));
+	// player.color = glm::normalize(player.color);
 
+	player.color == glm::vec3(0.0f);
 	player.name = "Player " + std::to_string(next_player_number++);
 
 	return &player;
@@ -301,9 +302,19 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 
 	//send player info helper:
 	auto send_player = [&](Player const &player) {
+		// player.position.x = 
+		std::cout << "connection_player->controls.clickgrid.grid_spot:: " << float(connection_player->controls.clickgrid.grid_spot) << std::endl;
+		// const glm::uvec2 barb = glm::uvec2(player.position.x, float(connection_player->controls.clickgrid.grid_spot));
+		// connection.send(barb);
 		connection.send(player.position);
+		// std::cout << "barb.y " << barb.y  << std::endl;
+		// connection.send(connection_player->controls.clickgrid.grid_spot);
 		connection.send(player.velocity);
-		connection.send(player.color);
+		const glm::uvec3 barb = glm::uvec3(float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot), float(connection_player->controls.clickgrid.grid_spot));
+		
+		std::cout << "barb : " << barb.x << " " << barb.y << " " << barb.z << std::endl;
+		
+		connection.send(barb);
 	
 		//NOTE: can't just 'send(name)' because player.name is not plain-old-data type.
 		//effectively: truncates player name to 255 chars
@@ -347,6 +358,7 @@ bool Game::recv_state_message(Connection *connection_) {
 			throw std::runtime_error("Ran out of bytes reading state message.");
 		}
 		std::memcpy(val, &recv_buffer[4 + at], sizeof(*val));
+		// std::cout <<" recv_buffer[4 + at]: " <<  recv_buffer[4 + at] << std::endl;
 		at += sizeof(*val);
 	};
 
@@ -357,10 +369,13 @@ bool Game::recv_state_message(Connection *connection_) {
 		players.emplace_back();
 		Player &player = players.back();
 		read(&player.position);
+		// std::cout << "player.position: " << player.position.x << "  " << player.position.y << std::endl;
 		read(&player.velocity);
 		read(&player.color);
+		std::cout << "player.color: " << player.color.x << "  " << player.position.y << " " << player.color.z << std::endl;
 		uint8_t name_len;
 		read(&name_len);
+		std::cout << "player.position.y " << player.position.y  << std::endl;
 		//n.b. would probably be more efficient to directly copy from recv_buffer, but I think this is clearer:
 		player.name = "";
 		for (uint8_t n = 0; n < name_len; ++n) {
@@ -368,12 +383,13 @@ bool Game::recv_state_message(Connection *connection_) {
 			read(&c);
 			player.name += c;
 		}
+		// std::cout << "player.position: " << player.position << std::endl;
 	}
 
 	if (at != size) throw std::runtime_error("Trailing data in state message.");
 
 	//delete message from buffer:
 	recv_buffer.erase(recv_buffer.begin(), recv_buffer.begin() + 4 + size);
-
-	return true;
+	
+ 	return true;
 }
