@@ -161,8 +161,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// };
 		auto to_ld = [](int coord_x, int coord_y){
 			return glm::vec3(
-				(coord_x/1280.0f)-1.0f, 
-				(coord_y/720.0f)-1.0f, 
+				((coord_x/1280.0f)*2.0)-1.0f, 
+				((coord_y/720.0f)*2.0)-1.0f, 
 				0.0f
 			);
 		};
@@ -174,10 +174,10 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// float tr_x = 0.5;
 		// float tr_y = 0.2;
 
-		float bl_x = 0;
-		float bl_y = 0;
-		float tr_x = 1280;
-		float tr_y = 720;
+		float bl_x = 540;
+		float bl_y = 25;
+		float tr_x = 740;
+		float tr_y = 200;
 		// // n_sq = num squares per dim
 		int n_sq = 3;
 
@@ -223,7 +223,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		int mouse_x, mouse_y;
 		SDL_GetMouseState(&mouse_x, &mouse_y);
-		std::cout << "(" << mouse_x << ", " << mouse_y << ")" << std::endl;
+		// std::cout << "(" << mouse_x << ", " << mouse_y << ")" << std::endl;
 		
 		// glm::vec3 bb  = convert_to_linesdraw(glm::vec2(5,3));
 		// std::cout << bb.x << std::endl;
